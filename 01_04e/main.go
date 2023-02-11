@@ -26,10 +26,13 @@ var coins = []coin{
 func calculateChange(amount float64) map[coin]int {
 	change := make(map[coin]int)
 	for _, coin := range coins {
+		amount = math.Round(amount*100) / 100 // Fix float64 multiply int, see `go run main.go --amount=7.92`
 		if amount >= coin.value {
-			count := math.Floor(amount/coin.value)
-			amount = amount - count*coin.value
+			count := math.Floor(amount / coin.value)
+			amount -= count * coin.value
 			change[coin] = int(count)
+		} else {
+			change[coin] = 0
 		}
 	}
 
