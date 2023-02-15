@@ -16,40 +16,50 @@ type Friend struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
 	Friends []string `json:"friends"`
+	Heard   bool
 }
 
 // hearGossip indicates that the friend has heard the gossip.
 func (f *Friend) hearGossip() {
-	log.Printf("%s has heard the gossip!\n", f.Name)
+	if !f.Heard {
+		log.Printf("%s has heard the gossip!\n", f.Name)
+		f.Heard = true
+	}
 }
 
 // Friends represents the map of friends and connections
 type Friends struct {
-	fmap map[string]Friend
+	fmap map[string]*Friend
 }
 
 // getFriend fetches the friend given an id.
-func (f *Friends) getFriend(id string) Friend {
+func (f *Friends) getFriend(id string) *Friend {
 	return f.fmap[id]
 }
 
 // getRandomFriend returns an random friend.
-func (f *Friends) getRandomFriend() Friend {
+func (f *Friends) getRandomFriend() *Friend {
 	rand.Seed(time.Now().Unix())
 	id := (rand.Intn(len(f.fmap)-1) + 1) * 100
 	return f.getFriend(fmt.Sprint(id))
 }
 
 // spreadGossip ensures that all the friends in the map have heard the news
-func spreadGossip(root Friend, friends Friends) {
-	panic("NOT IMPLEMENTED")
+func spreadGossip(root *Friend, friends *Friends) {
+	for _, id := range root.Friends {
+		friend := friends.getFriend(id)
+		if !friend.Heard {
+			friend.hearGossip()
+			spreadGossip(friend, friends)
+		}
+	}
 }
 
 func main() {
 	friends := importData()
 	root := friends.getRandomFriend()
 	root.hearGossip()
-	spreadGossip(root, friends)
+	spreadGossip(root, &friends)
 }
 
 // importData reads the input data from file and
@@ -66,9 +76,9 @@ func importData() Friends {
 		log.Fatal(err)
 	}
 
-	fm := make(map[string]Friend, len(data))
-	for _, d := range data {
-		fm[d.ID] = d
+	fm := make(map[string]*Friend, len(data))
+	for index, d := range data {
+		fm[d.ID] = &data[index]
 	}
 
 	return Friends{
