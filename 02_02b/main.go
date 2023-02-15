@@ -74,5 +74,16 @@ func main() {
 }
 
 func executeWalk(ownerActions []func(), dogActions []func()) {
-	panic("NOT IMPLEMENTED")
+	ch := make(chan struct{})
+	executeActions := func(actions []func()) {
+		for _, action := range actions {
+			action()
+		}
+		ch <- struct{}{}
+	}
+	go executeActions(ownerActions)
+	go executeActions(dogActions)
+	for i := 0; i < 2; i++ {
+		<-ch
+	}
 }
