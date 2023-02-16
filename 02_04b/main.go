@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sync"
 	"time"
 )
 
-//the amount of bidders we have at our auction
+// the amount of bidders we have at our auction
 const bidderCount = 10
 
 // initial wallet value for all bidders
@@ -37,8 +38,22 @@ type auctioneer struct {
 // Change the signature of this function as required
 func (a *auctioneer) runAuction() {
 	for _, item := range items {
+		ch := make(chan bid)
+		var wg sync.WaitGroup
+		wg.Add(len(a.bidders))
 		log.Printf("Opening bids for %s!\n", item)
-		panic("NOT IMPLEMENTED YET")
+		for _, bidder := range a.bidders {
+			go bidder.placeBid(ch, &wg)
+		}
+		var maxBid bid
+		for i := 0; i < len(a.bidders); i++ {
+			b := <-ch
+			if maxBid.amount < b.amount {
+				maxBid = b
+			}
+		}
+		wg.Wait()
+		a.bidders[maxBid.bidderID].payBid(maxBid.amount)
 	}
 }
 
@@ -50,13 +65,18 @@ type bidder struct {
 
 // placeBid generates a random amount and places it on the bids channels
 // Change the signature of this function as required
-func (b *bidder) placeBid() {
-	panic("NOT IMPLEMENTED YET")
+func (b *bidder) placeBid(ch chan<- bid, wg *sync.WaitGroup) {
+	defer wg.Done()
+	time.Sleep(500 * time.Millisecond) // THINK
+	amount := rand.Intn(b.wallet)
+	ch <- bid{b.id, amount}
+	log.Printf("%s place bid %d", b.id, amount)
 }
 
 // payBid subtracts the bid amount from the wallet of the auction winner
 func (b *bidder) payBid(amount int) {
 	b.wallet -= amount
+	log.Printf("%s pay bid %d. Remain wallet: %d", b.id, amount, b.wallet)
 }
 
 func main() {
@@ -70,7 +90,7 @@ func main() {
 			wallet: walletAmount,
 		}
 		bidders[id] = &b
-		go b.placeBid()
+		//go b.placeBid()
 	}
 	a := auctioneer{
 		bidders: bidders,
