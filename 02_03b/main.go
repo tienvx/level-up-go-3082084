@@ -1,6 +1,9 @@
 package main
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 // the number of attendees we need to serve lunch to
 const consumerCount = 300
@@ -14,17 +17,45 @@ var foodCourses = []string{
 
 // takeLunch is the consumer function for the lunch simulation
 // Change the signature of this function as required
-func takeLunch(name string) {
-	panic("NOT IMPLEMENTED YET")
+func takeLunch(name string, foodChannels []<-chan string, done chan<- struct{}) {
+	for _, ch := range foodChannels {
+		log.Printf("%s eats %s.\n", name, <-ch)
+	}
+	done <- struct{}{}
 }
 
 // serveLunch is the producer function for the lunch simulation.
 // Change the signature of this function as required
-func serveLunch(course string) {
-	panic("NOT IMPLEMENTED YET")
+func serveLunch(course string, foodChannel chan<- string, done <-chan struct{}) {
+	for {
+		select {
+		case foodChannel <- course:
+		case <-done:
+			return
+		}
+	}
 }
 
 func main() {
 	log.Printf("Welcome to the conference lunch! Serving %d attendees.\n",
 		consumerCount)
+	//var courses []chan string
+	var courses []<-chan string // ???
+	doneEating := make(chan struct{})
+	doneServing := make(chan struct{})
+	for _, c := range foodCourses {
+		ch := make(chan string)
+		courses = append(courses, ch)
+		go serveLunch(c, ch, doneServing)
+	}
+	for i := 0; i < consumerCount; i++ {
+		name := fmt.Sprintf("Attendee %d", i)
+		//go takeLunch(name, ([]<-chan string)(courses), doneEating) // cannot convert courses (variable of type []chan string) to []<-chan string
+		go takeLunch(name, courses, doneEating)
+	}
+
+	for i := 0; i < consumerCount; i++ {
+		<-doneEating
+	}
+	close(doneServing)
 }
